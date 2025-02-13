@@ -120,10 +120,19 @@
         serialNo++;
     }
 
-    function calculateBalance() {
-        let cashReceived = parseFloat(document.getElementById("cashReceived").value) || 0;
-        let balance = cashReceived - grandTotal;
-        document.getElementById("balance").textContent = balance.toFixed(2);
+    function removeItem(element, price) {
+        element.parentElement.parentElement.remove();
+        grandTotal -= price;
+        document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
+        updateQRCode(grandTotal);
+    }
+
+    function resetBill() {
+        document.getElementById("billBody").innerHTML = "";
+        document.getElementById("grandTotal").textContent = "0.00";
+        grandTotal = 0;
+        serialNo = 1;
+        updateQRCode(grandTotal);
     }
 
     function updateQRCode(amount) {
@@ -143,22 +152,6 @@
             link.download = "Bill_Receipt.png";
             link.click();
         });
-    }
-
-    document.addEventListener("keydown", function(event) {
-        if (event.key === "Escape") showPopup();
-        if (event.key === "Alt") closePopup();
-        if (event.key === "F3") resetBill();
-        if (event.key === "Enter") moveFocus(1);
-        if (event.key === "ArrowUp") moveFocus(-1);
-    });
-
-    function moveFocus(step) {
-        let inputs = document.querySelectorAll("input");
-        let index = [...inputs].indexOf(document.activeElement);
-        if (index !== -1 && inputs[index + step]) {
-            inputs[index + step].focus();
-        }
     }
 </script>
 
