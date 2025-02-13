@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Receipt System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .container { width: 300px; margin: auto; border: 2px solid black; padding: 10px; background: #f9f9f9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid black; padding: 5px; text-align: center; }
+        button { padding: 8px; margin-top: 10px; cursor: pointer; }
+        .remove-btn { color: red; font-weight: bold; cursor: pointer; }
+        #qr-container { margin-top: 20px; }
+        #popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 15px; border: 2px solid black; }
+        input { width: 80%; padding: 5px; margin: 5px 0; }
+        @media print {
+            body * { visibility: hidden; }
+            #receipt, #receipt * { visibility: visible; }
+            #receipt { width: 80mm; border: none; }
+            button, .remove-btn, .action-column { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="receipt">
+    <h2>ANNAPURNA STORES</h2>
+    <p>Bill No: <span id="billNo">1</span></p>
+    <p>Customer: <input type="text" id="customerName" placeholder="Optional"></p>
+
+    <table id="billTable">
+        <thead>
+            <tr>
+                <th>Sl. No</th>
+                <th>Particulars</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>Total</th>
+                <th class="action-column">Action</th>
+            </tr>
+        </thead>
+        <tbody id="billBody"></tbody>
+    </table>
+
+    <button onclick="showPopup()">Add Item</button>
+    <button onclick="resetBill()">Reset Bill (F3)</button>
+    <h3>Grand Total: ₹ <span id="grandTotal">0.00</span></h3>
+    <p>Cash Received: ₹ <input type="number" id="cashReceived" oninput="calculateBalance()"></p>
+    <p>Balance: ₹ <span id="balance">0.00</span></p>
+    
+    <button onclick="printReceipt()">Print Bill</button>
+    <button onclick="saveAsImage()">Save as Image</button>
+
+    <div id="qr-container">
+        <h4>Scan & Pay</h4>
+        <div id="qrcode"></div>
+    </div>
+</div>
+
+<div id="popup">
+    <h3>Add Item</h3>
+    <label>Product Name (Optional): <input type="text" id="productName"></label><br>
+    <label>Quantity: <input type="number" id="quantity" step="0.01"></label><br>
+    <label>Rate: <input type="number" id="rate"></label><br>
+    <button onclick="addItemFromPopup()">Add</button>
+</div>
+
+<script>
+    let serialNo = 1;
+    let grandTotal = 0;
+    let billNumber = 1;
+
+    function showPopup() {
+        document.getElementById("popup").style.display = "block";
+        document.getElementById("productName").value = "";
+        document.getElementById("quantity").value = "";
+        document.getElementById("rate").value = "";
+        document.getElementById("productName").focus();
+    }
+
+    function closePopup() {
+        document.getElementById("popup").style.display = "none";
+    }
+
+    function addItemFromPopup() {
+        let productName = document.getElementById("productName").value || "N/A";
+        let quantity = parseFloat(document.getElementById("quantity").value) || 1;
+        let rate = parseFloat(document.getElementById("rate").value) || 0;
+
+        if (isNaN(quantity) || isNaN(rate)) {
+            alert("Invalid entry! Please enter numbers.");
+            return;
+        }
+
+        addItem(productName, quantity, rate);
+        closePopup();
+    }
+
+    function addItem(productName, quantity, rate) {
+        let table = document.getElementById("billBody");
+        let row = document.createElement("tr");
+        let totalPrice = quantity * rate;
+
+        row.innerHTML = `
+            <td>${serialNo}</td>
+            <td>${productName}</td>
+            <td>${quantity.toFixed(2)}</td>
+            <td>${rate.toFixed(2)}</td>
+            <td>${totalPrice.toFixed(2)}</td>
+            <td class="action-column"><span class="remove-btn" onclick="removeItem(this, ${totalPrice})">X</span></td>
+        `;
+
+        table.appendChild(row);
+        grandTotal += totalPrice;
+        document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
+        updateQRCode(grandTotal);
+        serialNo++;
+    }
+
+    function calculateBalance() {
+        let cashReceived = parseFloat(document.getElementById("cashReceived").value) || 0;
+        let balance = cashReceived - grandTotal;
+        document.getElementById("balance").textContent = balance.toFixed(2);
+    }
+
+    function updateQRCode(amount) {
+        document.getElementById("qrcode").innerHTML = "";
+        let qrText = `upi://pay?pa=6363304520@okbizaxis&pn=StoreName&am=${amount.toFixed(2)}&cu=INR`;
+        new QRCode(document.getElementById("qrcode"), { text: qrText, width: 128, height: 128 });
+    }
+
+    function printReceipt() {
+        window.print();
+    }
+
+    function saveAsImage() {
+        html2canvas(document.getElementById("receipt")).then(canvas => {
+            let link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = "Bill_Receipt.png";
+            link.click();
+        });
+    }
+
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") showPopup();
+        if (event.key === "Alt") closePopup();
+        if (event.key === "F3") resetBill();
+        if (event.key === "Enter") moveFocus(1);
+        if (event.key === "ArrowUp") moveFocus(-1);
+    });
+
+    function moveFocus(step) {
+        let inputs = document.querySelectorAll("input");
+        let index = [...inputs].indexOf(document.activeElement);
+        if (index !== -1 && inputs[index + step]) {
+            inputs[index + step].focus();
+        }
+    }
+</script>
+
+</body>
+</html>
