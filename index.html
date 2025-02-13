@@ -7,64 +7,206 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .container { width: 300px; margin: auto; border: 2px solid black; padding: 10px; background: #f9f9f9; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid black; padding: 5px; text-align: center; }
-        button { padding: 8px; margin-top: 10px; cursor: pointer; }
-        .remove-btn { color: red; font-weight: bold; cursor: pointer; }
-        #qr-container { margin-top: 20px; }
-        #popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 15px; border: 2px solid black; }
-        input { width: 80%; padding: 5px; margin: 5px 0; }
+        /* General Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 300px; /* 80mm thermal paper width */
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 10px; /* Reduced padding */
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 5px; /* Reduced margin */
+            font-size: 18px; /* Reduced font size */
+            font-weight: bold;
+        }
+
+        p {
+            margin: 3px 0; /* Reduced margin */
+            color: #555;
+            font-size: 12px; /* Reduced font size */
+            font-weight: bold;
+        }
+
+        input {
+            width: 80%;
+            padding: 5px; /* Reduced padding */
+            margin: 3px 0; /* Reduced margin */
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 12px; /* Reduced font size */
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px; /* Reduced margin */
+            font-size: 12px; /* Reduced font size */
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 5px; /* Reduced padding */
+            text-align: center;
+            font-weight: bold;
+        }
+
+        th {
+            background: #f9f9f9;
+        }
+
+        .remove-btn {
+            color: red;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+            font-size: 12px; /* Reduced font size */
+        }
+
+        .remove-btn:hover {
+            color: darkred;
+        }
+
+        button {
+            padding: 8px 12px; /* Reduced padding */
+            margin: 5px 3px; /* Reduced margin */
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            font-size: 12px; /* Reduced font size */
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #qr-container {
+            margin-top: 10px; /* Reduced margin */
+            text-align: center;
+        }
+
+        #popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 15px; /* Reduced padding */
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            font-size: 12px; /* Reduced font size */
+        }
+
+        #popup h3 {
+            margin-bottom: 10px; /* Reduced margin */
+            color: #333;
+            font-weight: bold;
+        }
+
+        #popup label {
+            display: block;
+            margin: 5px 0; /* Reduced margin */
+            color: #555;
+            font-weight: bold;
+        }
+
+        #popup input {
+            width: 100%;
+            padding: 5px; /* Reduced padding */
+            margin: 3px 0; /* Reduced margin */
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        #popup button {
+            width: 100%;
+            margin-top: 5px; /* Reduced margin */
+        }
+
         @media print {
             body * { visibility: hidden; }
-            #receipt, #receipt * { visibility: visible; }
-            #receipt { width: 80mm; border: none; }
+            #receipt-content, #receipt-content * { visibility: visible; }
+            #receipt-content {
+                width: 80mm !important; /* Fixed width for thermal paper */
+                border: none;
+                font-weight: bold;
+                color: black;
+                font-size: 12px; /* Reduced font size */
+                padding: 0; /* Remove padding */
+                margin: 0; /* Remove margin */
+            }
             button, .remove-btn, .action-column { display: none !important; }
+            #qr-container {
+                text-align: center;
+                margin-top: 5px; /* Reduced margin */
+            }
         }
     </style>
 </head>
 <body>
 
 <div class="container" id="receipt">
-    <h2>ANNAPURNA STORES</h2>
-    <p>Bill No: <span id="billNo">1</span></p>
-    <p>Customer: <input type="text" id="customerName" placeholder="Optional"></p>
+    <div id="receipt-content">
+        <h2>ANNAPURNA STORES</h2>
+        <p>Bill No: <span id="billNo">1</span></p>
+        <p>Customer: <input type="text" id="customerName" placeholder="Optional"></p>
 
-    <table id="billTable">
-        <thead>
-            <tr>
-                <th>Sl. No</th>
-                <th>Particulars</th>
-                <th>Qty</th>
-                <th>Rate</th>
-                <th>Total</th>
-                <th class="action-column">Action</th>
-            </tr>
-        </thead>
-        <tbody id="billBody"></tbody>
-    </table>
+        <table id="billTable">
+            <thead>
+                <tr>
+                    <th>Sl. No</th>
+                    <th>Particulars</th>
+                    <th>Qty</th>
+                    <th>Rate</th>
+                    <th>Total</th>
+                    <th class="action-column">Action</th>
+                </tr>
+            </thead>
+            <tbody id="billBody"></tbody>
+        </table>
+
+        <h3>Grand Total: ₹ <span id="grandTotal">0.00</span></h3>
+        <p>Cash Received: ₹ <input type="number" id="cashReceived" oninput="calculateBalance()"></p>
+        <p>Balance: ₹ <span id="balance">0.00</span></p>
+        
+        <div id="qr-container">
+            <div id="qrcode"></div>
+        </div>
+    </div>
 
     <button onclick="showPopup()">Add Item</button>
     <button onclick="resetBill()">Reset Bill (F3)</button>
-    <h3>Grand Total: ₹ <span id="grandTotal">0.00</span></h3>
-    <p>Cash Received: ₹ <input type="number" id="cashReceived" oninput="calculateBalance()"></p>
-    <p>Balance: ₹ <span id="balance">0.00</span></p>
-    
-    <button onclick="printReceipt()">Print Bill</button>
-    <button onclick="saveAsImage()">Save as Image</button>
-
-    <div id="qr-container">
-        <h4>Scan & Pay</h4>
-        <div id="qrcode"></div>
-    </div>
+    <button onclick="printReceipt()">Print Bill (Ctrl + P)</button>
+    <button onclick="saveBillAsImage()">Save Bill as Image</button>
 </div>
 
 <div id="popup">
-    <h3>Add Item</h3>
-    <label>Product Name (Optional): <input type="text" id="productName"></label><br>
-    <label>Quantity: <input type="number" id="quantity" step="0.01"></label><br>
-    <label>Rate: <input type="number" id="rate"></label><br>
+    <h3>Add Item <span style="float: right; cursor: pointer;" onclick="closePopup()">X</span></h3>
+    <label>Product Name (Optional): <input type="text" id="productName" placeholder="Enter product name"></label>
+    <label>Quantity: <input type="number" id="quantity" step="0.01" placeholder="Enter quantity"></label>
+    <label>Rate: <input type="number" id="rate" placeholder="Enter rate"></label>
     <button onclick="addItemFromPopup()">Add</button>
 </div>
 
@@ -72,6 +214,40 @@
     let serialNo = 1;
     let grandTotal = 0;
     let billNumber = 1;
+
+    // Keyboard Shortcuts
+    document.addEventListener("keydown", (e) => {
+        // Esc: Open the "Add Item" popup
+        if (e.key === "Escape") showPopup();
+
+        // Alt: Close the popup
+        if (e.key === "Alt") closePopup();
+
+        // F3: Reset the bill
+        if (e.key === "F3") resetBill();
+
+        // Ctrl + P: Print the receipt
+        if (e.ctrlKey && e.key === "p") {
+            e.preventDefault(); // Prevent default print dialog
+            printReceipt();
+        }
+    });
+
+    // Handle Enter key in the popup
+    document.getElementById("popup").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault(); // Prevent form submission
+            let currentInput = document.activeElement.id;
+
+            if (currentInput === "productName") {
+                document.getElementById("quantity").focus();
+            } else if (currentInput === "quantity") {
+                document.getElementById("rate").focus();
+            } else if (currentInput === "rate") {
+                addItemFromPopup(); // Add item and close the popup
+            }
+        }
+    });
 
     function showPopup() {
         document.getElementById("popup").style.display = "block";
@@ -116,7 +292,7 @@
         table.appendChild(row);
         grandTotal += totalPrice;
         document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
-        updateQRCode(grandTotal);
+        updateQRCode();
         serialNo++;
     }
 
@@ -124,20 +300,33 @@
         element.parentElement.parentElement.remove();
         grandTotal -= price;
         document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
-        updateQRCode(grandTotal);
+        updateQRCode();
     }
 
     function resetBill() {
-        document.getElementById("billBody").innerHTML = "";
-        document.getElementById("grandTotal").textContent = "0.00";
-        grandTotal = 0;
-        serialNo = 1;
-        updateQRCode(grandTotal);
+        if (confirm("Are you sure you want to reset the bill?")) {
+            document.getElementById("billBody").innerHTML = "";
+            document.getElementById("grandTotal").textContent = "0.00";
+            document.getElementById("cashReceived").value = "";
+            document.getElementById("balance").textContent = "0.00";
+            grandTotal = 0;
+            serialNo = 1;
+            updateQRCode();
+        }
     }
 
-    function updateQRCode(amount) {
+    function calculateBalance() {
+        let cashReceived = parseFloat(document.getElementById("cashReceived").value) || 0;
+        let balance = cashReceived - grandTotal;
+        document.getElementById("balance").textContent = balance.toFixed(2);
+        updateQRCode();
+    }
+
+    function updateQRCode() {
+        let balance = parseFloat(document.getElementById("balance").textContent) || 0;
+        let qrAmount = balance < 0 ? Math.abs(balance) : grandTotal; // Use balance if negative, else grand total
         document.getElementById("qrcode").innerHTML = "";
-        let qrText = `upi://pay?pa=6363304520@okbizaxis&pn=StoreName&am=${amount.toFixed(2)}&cu=INR`;
+        let qrText = `upi://pay?pa=6363304520@okbizaxis&pn=StoreName&am=${qrAmount.toFixed(2)}&cu=INR`;
         new QRCode(document.getElementById("qrcode"), { text: qrText, width: 128, height: 128 });
     }
 
@@ -145,12 +334,14 @@
         window.print();
     }
 
-    function saveAsImage() {
-        html2canvas(document.getElementById("receipt")).then(canvas => {
+    // Save Bill as Image
+    function saveBillAsImage() {
+        html2canvas(document.getElementById("receipt-content")).then(canvas => {
             let link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
-            link.download = "Bill_Receipt.png";
+            link.download = `Bill_${billNumber}.png`; // File name
+            link.href = canvas.toDataURL("image/png"); // Save as PNG
             link.click();
+            billNumber++; // Increment bill number for next save
         });
     }
 </script>
