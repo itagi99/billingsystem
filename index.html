@@ -209,6 +209,7 @@
     <button onclick="resetBill()">Reset Bill (F3)</button>
     <button onclick="printReceipt()">Print Bill (Ctrl + P)</button>
     <button onclick="saveBillAsImage()">Save Bill as Image</button>
+    <button onclick="shareBill()">Share Bill</button> <!-- New Share Button -->
 </div>
 
 <div id="popup">
@@ -392,6 +393,28 @@
             link.href = canvas.toDataURL("image/png"); // Save as PNG
             link.click();
             billNumber++; // Increment bill number for next save
+        });
+    }
+
+    // Share Bill
+    function shareBill() {
+        html2canvas(document.getElementById("receipt-content")).then(canvas => {
+            canvas.toBlob((blob) => {
+                const file = new File([blob], `Bill_${billNumber}.png`, { type: "image/png" });
+                const filesArray = [file];
+
+                if (navigator.canShare && navigator.canShare({ files: filesArray })) {
+                    navigator.share({
+                        files: filesArray,
+                        title: "Bill Receipt",
+                        text: "Here is the bill receipt.",
+                    })
+                    .then(() => console.log("Bill shared successfully!"))
+                    .catch((error) => console.error("Error sharing bill:", error));
+                } else {
+                    alert("Sharing not supported in this browser.");
+                }
+            });
         });
     }
 </script>
