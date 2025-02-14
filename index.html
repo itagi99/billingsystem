@@ -70,7 +70,7 @@
             background: #f9f9f9;
         }
 
-        .remove-btn {
+        .remove-btn, .edit-btn {
             color: red;
             font-weight: bold;
             cursor: pointer;
@@ -80,6 +80,15 @@
 
         .remove-btn:hover {
             color: darkred;
+        }
+
+        .edit-btn {
+            color: blue;
+            margin-left: 5px;
+        }
+
+        .edit-btn:hover {
+            color: darkblue;
         }
 
         button {
@@ -157,7 +166,7 @@
                 padding: 0; /* Remove padding */
                 margin: 0; /* Remove margin */
             }
-            button, .remove-btn, .action-column { display: none !important; }
+            button, .remove-btn, .edit-btn, .action-column { display: none !important; }
             #qr-container {
                 text-align: center;
                 margin-top: 5px; /* Reduced margin */
@@ -203,17 +212,18 @@
 </div>
 
 <div id="popup">
-    <h3>Add Item <span style="float: right; cursor: pointer;" onclick="closePopup()">X</span></h3>
+    <h3>Add/Edit Item <span style="float: right; cursor: pointer;" onclick="closePopup()">X</span></h3>
     <label>Product Name (Optional): <input type="text" id="productName" placeholder="Enter product name"></label>
     <label>Quantity: <input type="number" id="quantity" step="0.01" placeholder="Enter quantity"></label>
     <label>Rate: <input type="number" id="rate" placeholder="Enter rate"></label>
-    <button onclick="addItemFromPopup()">Add</button>
+    <button onclick="saveItem()">Save</button>
 </div>
 
 <script>
     let serialNo = 1;
     let grandTotal = 0;
     let billNumber = 1;
+    let editingRow = null; // Track the row being edited
 
     // Keyboard Shortcuts
     document.addEventListener("keydown", (e) => {
@@ -244,16 +254,27 @@
             } else if (currentInput === "quantity") {
                 document.getElementById("rate").focus();
             } else if (currentInput === "rate") {
-                addItemFromPopup(); // Add item and close the popup
+                saveItem(); // Save item and close the popup
             }
         }
     });
 
-    function showPopup() {
+    function showPopup(row = null) {
+        if (row) {
+            // Populate the popup with row data for editing
+            let cells = row.cells;
+            document.getElementById("productName").value = cells[1].textContent;
+            document.getElementById("quantity").value = cells[2].textContent;
+            document.getElementById("rate").value = cells[3].textContent;
+            editingRow = row;
+        } else {
+            // Clear the popup for adding a new item
+            document.getElementById("productName").value = "";
+            document.getElementById("quantity").value = "";
+            document.getElementById("rate").value = "";
+            editingRow = null;
+        }
         document.getElementById("popup").style.display = "block";
-        document.getElementById("productName").value = "";
-        document.getElementById("quantity").value = "";
-        document.getElementById("rate").value = "";
         document.getElementById("productName").focus();
     }
 
@@ -261,7 +282,7 @@
         document.getElementById("popup").style.display = "none";
     }
 
-    function addItemFromPopup() {
+    function saveItem() {
         let productName = document.getElementById("productName").value || "N/A";
         let quantity = parseFloat(document.getElementById("quantity").value) || 1;
         let rate = parseFloat(document.getElementById("rate").value) || 0;
@@ -271,7 +292,13 @@
             return;
         }
 
-        addItem(productName, quantity, rate);
+        if (editingRow) {
+            // Update the existing row
+            updateItem(editingRow, productName, quantity, rate);
+        } else {
+            // Add a new row
+            addItem(productName, quantity, rate);
+        }
         closePopup();
     }
 
@@ -286,7 +313,10 @@
             <td>${quantity.toFixed(2)}</td>
             <td>${rate.toFixed(2)}</td>
             <td>${totalPrice.toFixed(2)}</td>
-            <td class="action-column"><span class="remove-btn" onclick="removeItem(this, ${totalPrice})">X</span></td>
+            <td class="action-column">
+                <span class="edit-btn" onclick="editItem(this)">Edit</span>
+                <span class="remove-btn" onclick="removeItem(this, ${totalPrice})">X</span>
+            </td>
         `;
 
         table.appendChild(row);
@@ -294,6 +324,26 @@
         document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
         updateQRCode();
         serialNo++;
+    }
+
+    function editItem(button) {
+        let row = button.parentElement.parentElement;
+        showPopup(row);
+    }
+
+    function updateItem(row, productName, quantity, rate) {
+        let totalPrice = quantity * rate;
+        let oldTotal = parseFloat(row.cells[4].textContent);
+
+        row.cells[1].textContent = productName;
+        row.cells[2].textContent = quantity.toFixed(2);
+        row.cells[3].textContent = rate.toFixed(2);
+        row.cells[4].textContent = totalPrice.toFixed(2);
+
+        // Update grand total
+        grandTotal += totalPrice - oldTotal;
+        document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
+        updateQRCode();
     }
 
     function removeItem(element, price) {
